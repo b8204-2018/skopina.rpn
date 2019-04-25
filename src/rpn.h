@@ -2,7 +2,6 @@
 #define RPN_RPN_H
 
 #include <string>
-#include <fstream>
 
 using namespace std;
 

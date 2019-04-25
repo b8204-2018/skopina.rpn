@@ -4,9 +4,6 @@
 #include <sstream>
 
 
-#include <iostream>
-
-
 bool Solver::isOperation(char s) {
     return (s == ADDITION || s == SUBTRACTION || s == MULTIPLICATION || s == DIVISION);
 }
