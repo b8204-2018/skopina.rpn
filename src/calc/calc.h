@@ -2,9 +2,6 @@
 #define CALC_CALC_H
 
 
-#include <string>
-
-
 #define ADDITION '+'
 #define SUBTRACTION '-'
 #define MULTIPLICATION '*'
