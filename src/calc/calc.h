@@ -8,9 +8,6 @@
 #define DIVISION '/'
 
 
-using namespace std;
-
-
 class BasicSolver{
 public:
     virtual char getOperationSymbol() = 0;

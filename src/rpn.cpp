@@ -1,127 +1,170 @@
-#include "rpn.h"
-#include <stack>
-#include "calc/calc.h"
+#include <utility>
+
 #include <sstream>
+#include <iostream>
+#include "rpn.h"
+
+using namespace std;
 
 
-bool Solver::isOperation(char s) {
-    return (s == ADDITION || s == SUBTRACTION || s == MULTIPLICATION || s == DIVISION);
+void OperationsHandler::addOperation(Operation *op) {
+    OpList *current = head;
+    while (current != nullptr && current->operation.getSign() != op->getSign()){
+        current = current->next;
+    }
+    if (current == nullptr){
+        current = new OpList(op);
+        current->next = head;
+        swap(head, current);
+    }
 }
 
-bool Solver::isLeftBracket(char s) {
-    return (s == '(');
+void OperationsHandler::fill() {
+    addOperation(new Addition);
+    addOperation(new Subtraction);
+    addOperation(new Multiplication);
+    addOperation(new Division);
+    addOperation(new Negation);
 }
 
-bool Solver::isRightBracket(char s) {
-    return (s == ')');
+Operation* OperationsHandler::getOp(std::string sign) {
+    OpList *current = head;
+    while (current != nullptr && current->operation.getSign() != sign){
+        current = current->next;
+    }
+    if (current == nullptr){
+        return nullptr;
+    }
+    return &current->operation;
+}
+
+OperationsHandler::~OperationsHandler() {
+    OpList *current = head;
+    while (head != nullptr){
+        current = current->next;
+        delete head;
+        head = current;
+    }
+}
+
+template <typename T, typename S>
+S Solver::cast(T &a) {
+    stringstream stream;
+    stream << a;
+    S b;
+    stream >> b;
+    return b;
+}
+
+
+bool Solver::isOperation(std::string s) {
+    return (handler.getOp(s) != nullptr);
+}
+
+bool Solver::isLeftBracket(const string& s) {
+    return (s == "(");
+}
+
+bool Solver::isRightBracket(const string& s) {
+    return (s == ")");
 }
 
 bool Solver::isNumber(char s) {
-    char numbers[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9'};
-    for (int i = 0; i < 10; i++){
-        if (s == numbers[i]){
-            return true;
-        }
-    }
-    return false;
+    return (s >= 0x30 && s <= 0x39);
 }
 
 bool Solver::isPoint(char s) {
     return (s == '.');
 }
 
-bool Solver::priority(char s1, char s2) {
-    if ((s1 == MULTIPLICATION || s1 == DIVISION) && (s2 == ADDITION || s2 == SUBTRACTION)){
-            return true;
-    }
-    if ((s1 == ADDITION || s1 == SUBTRACTION) && (s2 == MULTIPLICATION || s2 == DIVISION)){
-        return false;
-    }
-    if ((s1 == ADDITION || s1 == SUBTRACTION) && (s2 == ADDITION || s2 == SUBTRACTION)){
-        return true;
-    }
-    if ((s1 == MULTIPLICATION || s1 == DIVISION) && (s2 == MULTIPLICATION || s2 == DIVISION)){
-        return true;
-    }
+bool Solver::priority(Operation *op1, Operation *op2) {
+    return (op1->getOrder() <= op2->getOrder());
 }
 
-string* Solver::convert(const string& s) {
-    stack <char> operations;
+string* Solver::convert(string s) {
+    stack <string> op;
     string rpn [s.length()];
-    string number;
-    int i(0), j(0);
-    while (i < s.length() - 1){
-        while (s[i] == ' '){
-            i++;
+    string temp;
+    int i, j(0);
+    while (!s.empty()) {
+        i = 0;
+        while (!s.empty() && s[0] == ' ') {
+            s.erase(0, 1);
         }
-        if (isNumber(s[i])){
-            while (i < s.length() && isNumber(s[i])){
-                number += s[i];
+        if (isNumber(s[i])) {
+            while (i < s.length() && isNumber(s[i])) {
+                temp += s[i];
                 i++;
-                if (isPoint(s[i])){ //если вещественное число
-                    if (i + 1 < s.length() && isNumber(s[i + 1])){
-                        number += s.substr(i, 2);
+                if (isPoint(s[i])) { //если вещественное число
+                    if (i + 1 < s.length() && isNumber(s[i + 1])) {
+                        temp += s.substr(i, 2);
                         i += 2;
                     } else {//не число
                         string err("Invalid symbol ");
-                        string symbol (1, s[i]);
-                        err = err + symbol;
-                        throw (std::invalid_argument)err.c_str();
+                        string symbol(1, s[i]);
+                        err += symbol;
+                        throw (std::invalid_argument) err.c_str();
                     }
                 }
             }
-            rpn[j] = number; //числа всегда добавляются в массив выхода
+            rpn[j] = temp; //числа всегда добавляются в массив выхода
             j++;
-            number.erase();
-        } else if (isOperation(s[i])){
-            /*
-             * если стек операций пуст - добавление
-             * если последняя в стеке - левая скобка, добавляем
-             * если последняя операция в стеке имеет приоритет ниже текущей, добавляем в стек
-             * */
-            if (operations.empty() || isLeftBracket(operations.top()) || !priority(operations.top(), s[i])){
-                operations.push(s[i]);
-                i++;
-            } else {//выталкиваем из стека в массив выхода последнюю операцию, а текущую помещаем в стек
-                rpn[j] = string(1, operations.top());
+            s.erase(0, temp.length());
+            temp.erase();
+        } else if (isLeftBracket(string(1, s[i]))){//левая скобка всегда добавляется в стек
+            op.push(string(1, s[i]));
+            s.erase(0, 1);
+        } else if (isRightBracket(string(1, s[i]))){//если правая скобка, то из стека выталкивается все до левой скобки
+            while (!op.empty() && !isLeftBracket(op.top())){
+                rpn[j] = op.top();
                 j++;
-                operations.pop();
-                operations.push(s[i]);
-                i++;
+                op.pop();
             }
-        } else if (isLeftBracket(s[i])){//левая скобка всегда добавляется в стек
-            operations.push(s[i]);
-            i++;
-        } else if (isRightBracket(s[i])){//если правая скобка, то из стека выталкивается все до левой скобки
-            bool leftBracket(false);
-            while (!operations.empty() && !isLeftBracket(operations.top())){
-                rpn[j] = string(1, operations.top());
-                j++;
-                operations.pop();
-            }
-            if (operations.empty() || !isLeftBracket(operations.top())){
+            if (op.empty() || !isLeftBracket(op.top())){
                 throw (std::invalid_argument)"Expected '('";
             }
-            operations.pop();
-            i++;
-        } else {//если встречен некорректный символ
-            string err("Invalid symbol ");
-            string symbol (1, s[i]);
-            err = err + symbol;
-            throw (std::invalid_argument)err.c_str();
+            op.pop();
+            s.erase(0, 1);
+        } else {
+            temp = s.substr(i, s.find(' '));
+            if (handler.getOp(temp) != nullptr){
+                  if (op.empty() || isLeftBracket(op.top()) || !priority(handler.getOp(op.top()), handler.getOp(temp))){
+                      op.push(temp);
+                  } else {
+                      rpn[j] = op.top();
+                      j++;
+                      op.pop();
+                      op.push(temp);
+                  }
+                  s.erase(0, temp.length());
+                  temp.erase();
+            } else {
+                  throw std::logic_error ("Invalid expression.");
+            }
         }
     }
-    while (!operations.empty()){//конец выражение - выталкиваем все из стека
-        rpn[j] = string(1, operations.top());
+    while (!op.empty()){//конец выражение - выталкиваем все из стека
+        if (isLeftBracket(op.top())){
+            throw (std::invalid_argument)"Expected ')'";
+        }
+        rpn[j] = op.top();
         j++;
-        operations.pop();
+        op.pop();
     }
     auto *out = new string [j + 1];
-    stringstream str;
-    str << j;
-    str >> out[0];
+    out[0] = cast<int, string>(j);
     for (i = 1; i <= j; i++){
         out[i] = rpn[i - 1];
+    }
+    return out;
+}
+
+
+double* Solver::extract(std::stack<double> &result, Operation *operation) {
+    auto out = new double [operation->argc()];
+    for (int i = operation->argc() - 1; i >= 0; i--){
+        out[i] = result.top();
+        result.pop();
     }
     return out;
 }
@@ -130,36 +173,17 @@ string* Solver::convert(const string& s) {
 double Solver::solution(const string &s) {
     try {
         string *rpn = convert(s);
-        Additor add;
-        Subtractor sub;
-        Divisor div;
-        Multiplicator mul;
-        BasicSolver *arr[] = {&add, &sub, &div, &mul};
         stack <double> result;
-        stringstream stream;
-        stream << rpn[0];
-        int n;
-        stream >> n;
-        stream.clear();
-        int i(1);
-        while (i <= n) {
-            if (isOperation(rpn[i][0])) {
-                int j(0);
-                while (rpn[i][0] != arr[j]->getOperationSymbol()) { j++; }
-                double a(result.top());
-                result.pop();
-                double b(result.top());
-                result.pop();
-                result.push(arr[j]->operationResult(b, a));
+        int n = cast<string, int>(rpn[0]);
+        for (int i = 1; i <= n; i++){
+            if (isOperation(rpn[i])){
+                Operation *op = handler.getOp(rpn[i]);
+                result.push(op->operationResult(extract(result, op)));
             } else {
-                double x;
-                stream << rpn[i];
-                stream >> x;
-                stream.clear();
-                result.push(x);
+                result.push(cast<string, double>(rpn[i]));
             }
-            i++;
         }
+        delete [] rpn;
         return result.top();
     } catch (std::invalid_argument &err){
         cout << err.what();
