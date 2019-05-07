@@ -6,14 +6,11 @@
 #define SUBTRACTION "-"
 #define MULTIPLICATION "*"
 #define DIVISION "/"
-#define NEGATION "~"
 
 #define ADD_SUB_ORDER 150
 #define MUL_DIV_ORDER 100
-#define NEG_ORDER 200
 
 #define BINARY 2
-#define UNARY 1
 
 
 class Operation{
@@ -26,7 +23,7 @@ public:
 
 class BinaryOp: public Operation{
 public:
-    int argc() override{
+    int argc() final {
         return BINARY;
     }
 };
@@ -86,25 +83,5 @@ public:
     }
 };
 
-
-class UnaryOp: public Operation{
-public:
-    int argc() override{
-        return UNARY;
-    }
-};
-
-class Negation: public UnaryOp{
-public:
-    const std::string getSign() override{
-        return NEGATION;
-    }
-    int getOrder() override{
-        return NEG_ORDER;
-    }
-    double operationResult(double *val) override{
-        return (-1 * val[0]);
-    }
-};
 
 #endif //CALC_CALC_H

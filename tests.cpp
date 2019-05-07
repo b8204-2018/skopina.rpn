@@ -3,93 +3,112 @@
 
 using namespace std;
 
-TEST(Exceptions, LeftBracket) {
-    string ex("((44 + 66) * 0.3) + 0.0001)");    
-    Solver solver;
-    EXPECT_THROW(solver.convert(ex), std::invalid_argument);
+
+TEST(InvalidExpression, ExtraRightBracket) {
+    string ex("(6 + 10 - 4) / (1 + 1 * 2)) + 1");
+    Solver s;
+    EXPECT_THROW(s.solution(ex), ExpectedLeftBracket);
 }
 
-TEST(Exceptions, RightBracket) {
-    string ex("(((((((44 + 66) * 0.3) + 0.0001)");
-    Solver solver;
-    EXPECT_THROW(solver.convert(ex), std::invalid_argument);
+TEST(InvalidExpression, ExtraLeftBracket) {
+    string ex("(6 + 10 - 4) / ((1 + 1 * 2) + 1");
+    Solver s;
+    EXPECT_THROW(s.solution(ex), ExpectedRightBracket);
 }
 
-TEST(Exceptions, Point) {
-    string ex("47.66 + 5.");
-    Solver solver;
-    EXPECT_THROW(solver.convert(ex), std::invalid_argument);
+TEST(InvalidExpression, InvalidSymbol) {
+    string ex("(6 + 10 - 4) / (1 + 1 * 2.) + 1");
+    Solver s;
+    EXPECT_THROW(s.solution(ex), InvalidExpression);
+    ex = ("(6 + 10 - 4) / (1 + 1 * 2) % + 1");
+    EXPECT_THROW(s.solution(ex), InvalidExpression);
 }
 
-TEST(Exceptions, InvalidSymbol) {
-    string ex("5 + 6?");
-    Solver solver;
-    EXPECT_THROW(solver.convert(ex), std::logic_error);
-}
-
-TEST(Make_RPN, withoutBrackets){
-    string ex("5 * 2 + 10");
-    Solver solver;
-    string rpn[] = {"5", "5", "2", "*", "10", "+"};
-    for (int i = 0; i <= 5; i++){
-        EXPECT_EQ(solver.convert(ex)[i], rpn[i]);
-    }
+TEST(InvalidExpression, LackOfOperands) {
+    string ex("(6 + 10 - 4) / (1 + 1 * 2) + + 1");
+    Solver s;
+    EXPECT_THROW(s.solution(ex), LackOfOperands);
 }
 
 
-TEST(Make_RPN, withBrackets){
+TEST(Calculation, NoBrackets_EqualPriorities) {
+    string ex("6 + 10 - 4");
+    Solver s;
+    EXPECT_EQ(s.solution(ex), 12);
+    ex = "6.2 + 10 - 4";
+    EXPECT_EQ(s.solution(ex), 12.2);
+}
+
+TEST(Calculation, NoBrackets_NotEqualPriorities) {
+    string ex("1 + 1 * 2");
+    Solver s;
+    EXPECT_EQ(s.solution(ex), 3);
+    ex = "1 * 2 + 1";
+    EXPECT_EQ(s.solution(ex), 3);
+
+    ex = "1 + 1 * 2.74";
+    EXPECT_EQ(s.solution(ex), 3.74);
+    ex = "1 * 2 + 1.0";
+    EXPECT_EQ(s.solution(ex), 3);
+}
+
+TEST(Calculation, Brackets_EqualPriorities) {
     string ex("6 + (10 - 4)");
-    Solver solver;
-    string rpn[] = {"5", "6", "10", "4", "-", "+"};
-    for (int i = 0; i <= 5; i++){
-        EXPECT_EQ(solver.convert(ex)[i], rpn[i]);
-    }
+    Solver s;
+    EXPECT_EQ(s.solution(ex), 12);
+    ex = "(6 + 10) - 4";
+    EXPECT_EQ(s.solution(ex), 12);
+    ex = "6 + (10.48 - 4)";
+    EXPECT_EQ(s.solution(ex), 12.48);
+    ex = "(6 + 10) - 4.5";
+    EXPECT_EQ(s.solution(ex), 11.5);
+}
+
+TEST(Calculation, Brackets_NotEqualPriorities) {
+    string ex("(1 + 1) * 2");
+    Solver s;
+    EXPECT_EQ(s.solution(ex), 4);
+    ex = "2 * (1 + 1)";
+    EXPECT_EQ(s.solution(ex), 4);
+    ex = "(1.48 + 1.52) * 2";
+    EXPECT_EQ(s.solution(ex), 6);
+    ex = "2.5 * (1 + 1)";
+    EXPECT_EQ(s.solution(ex), 5);
 }
 
 
-TEST(Make_RPN, differentPriorities){
-    string ex("(6 + 10 - 4) / (1 + 1 * 2) + 1");
-    Solver solver;
-    string rpn[] = {"13", "6", "10", "+", "4", "-", "1", "1", "2", "*", "+", "/", "1", "+"};
-    for (int i = 0; i <= 13; i++){
-        EXPECT_EQ(solver.convert(ex)[i], rpn[i]);
-    }
-}
+TEST (AddNewOperation, NewOperation){
+    class Negation: public Operation{
+    public:
+        int argc(){
+            return 1;
+        }
+        const std::string getSign() override{
+            return "~";
+        }
+        int getOrder() override{
+            return 200;
+        }
+        double operationResult(double *val) override{
+            return (-1 * val[0]);
+        }
+    };
 
+    class HandlerWithNegation: public HandlerCreator{
+    public:
+        OperationsHandler create(){
+            DefaultHandler def;
+            handler = def.create();
+            add(new Negation);
+            return handler;
+        }
+    };
 
-TEST(Make_RPN, differentARGC){
-    string ex("(6 + 10 - 4) / (~ (1 + 1 * 2)) + 1");
-    Solver solver;
-    string rpn[] = {"14", "6", "10", "+", "4", "-", "1", "1", "2", "*", "+", "~", "/", "1", "+"};
-    for (int i = 0; i <= 13; i++){
-        EXPECT_EQ(solver.convert(ex)[i], rpn[i]);
-    }
-}
+    HandlerWithNegation creator;
+    OperationsHandler handler = creator.create();
+    Solver solver(handler);
 
-TEST(Calculating, withoutBrackets){
-string ex("5 * 2 + 10");
-Solver solver;
-EXPECT_EQ(solver.solution(ex), 20);
-}
-
-
-TEST(Calculating, withBrackets){
-    string ex("6 + (10 - 4)");
-    Solver solver;
-    EXPECT_EQ(solver.solution(ex), 12);
-}
-
-
-TEST(Calculating, differentPriorities){
-    string ex("(6 + 10 - 4) / (1 + 1 * 2) + 1");
-    Solver solver;
-    EXPECT_EQ(solver.solution(ex), 5);
-}
-
-
-TEST(Calculating, differentARGC){
-    string ex("(6 + 10 - 4) / (~ (1 + 1 * 2)) + 1");
-    Solver solver;
+    string ex("(6 + 10 - 4) / ( ~ (1 + 1 * 2) + 1)");
     EXPECT_EQ(solver.solution(ex), -3);
 }
 

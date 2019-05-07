@@ -2,24 +2,33 @@
 #define RPN_RPN_H
 
 
+#include <vector>
 #include <stack>
 #include <string>
 #include "operation.h"
+#include "exeptions.h"
 
-
-struct OpList{
-    Operation &operation;
-    struct  OpList *next = nullptr;
-    OpList(Operation *op): operation(*op){}
-};
+class HandlerCreator;
 
 class OperationsHandler {
-    OpList *head = nullptr;
+    std::vector<Operation*> op;
 public:
-    void addOperation(Operation *op);
-    void fill();
     Operation *getOp(std::string sign);
-    ~OperationsHandler();
+    friend HandlerCreator;
+};
+
+
+class HandlerCreator {
+protected:
+    OperationsHandler handler;
+public:
+    void add(Operation *operation);
+    virtual OperationsHandler create() = 0;
+};
+
+class DefaultHandler: public HandlerCreator {
+public:
+    OperationsHandler create();
 };
 
 
@@ -37,9 +46,8 @@ class Solver {
     double *extract (std::stack<double> &result, Operation *operation);
     std::string* convert(std::string s);
 public:
-    Solver(){
-        handler.fill();
-    }
+    Solver();
+    Solver(OperationsHandler &h);
     double solution (const std::string& s);
 };
 

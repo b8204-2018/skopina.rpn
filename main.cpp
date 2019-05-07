@@ -13,7 +13,15 @@ int main(int argc, char **argv) {
         string ex;
         getline(f, ex);
         Solver solver;
-        cout << ex << " is equal to " << solver.solution(ex) << endl;
+        cout << ex;
+        try {
+            double solution = solver.solution(ex);
+            cout << " is equal to " << solution << endl;
+        } catch (Exception &err) {
+            cout << " " << err.getError();
+        }
+
+        
     }
     return 0;
 }

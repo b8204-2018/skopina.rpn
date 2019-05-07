@@ -1,51 +1,38 @@
-#include <utility>
-
 #include <sstream>
 #include <iostream>
 #include "rpn.h"
 
+
 using namespace std;
 
 
-void OperationsHandler::addOperation(Operation *op) {
-    OpList *current = head;
-    while (current != nullptr && current->operation.getSign() != op->getSign()){
-        current = current->next;
-    }
-    if (current == nullptr){
-        current = new OpList(op);
-        current->next = head;
-        swap(head, current);
+void HandlerCreator::add(Operation *operation) {
+    int i;
+    for (i = 0; i < handler.op.size(); i++);
+    if (i == handler.op.size()){
+        handler.op.push_back(operation);
     }
 }
 
-void OperationsHandler::fill() {
-    addOperation(new Addition);
-    addOperation(new Subtraction);
-    addOperation(new Multiplication);
-    addOperation(new Division);
-    addOperation(new Negation);
+
+OperationsHandler DefaultHandler::create() {
+    add(new Addition);
+    add(new Subtraction);
+    add(new Multiplication);
+    add(new Division);
+    return handler;
 }
+
 
 Operation* OperationsHandler::getOp(std::string sign) {
-    OpList *current = head;
-    while (current != nullptr && current->operation.getSign() != sign){
-        current = current->next;
-    }
-    if (current == nullptr){
+    int i;
+    for(i = 0; i < op.size() && op[i]->getSign() != sign; i++);
+    if (i == op.size()){
         return nullptr;
     }
-    return &current->operation;
+    return op[i];
 }
 
-OperationsHandler::~OperationsHandler() {
-    OpList *current = head;
-    while (head != nullptr){
-        current = current->next;
-        delete head;
-        head = current;
-    }
-}
 
 template <typename T, typename S>
 S Solver::cast(T &a) {
@@ -55,6 +42,14 @@ S Solver::cast(T &a) {
     stream >> b;
     return b;
 }
+
+
+Solver::Solver() {
+    DefaultHandler def;
+    handler = def.create();
+}
+
+Solver::Solver(OperationsHandler &h): handler(h) {}
 
 
 bool Solver::isOperation(std::string s) {
@@ -81,6 +76,7 @@ bool Solver::priority(Operation *op1, Operation *op2) {
     return (op1->getOrder() <= op2->getOrder());
 }
 
+
 string* Solver::convert(string s) {
     stack <string> op;
     string rpn [s.length()];
@@ -100,10 +96,7 @@ string* Solver::convert(string s) {
                         temp += s.substr(i, 2);
                         i += 2;
                     } else {//не число
-                        string err("Invalid symbol ");
-                        string symbol(1, s[i]);
-                        err += symbol;
-                        throw (std::invalid_argument) err.c_str();
+                        throw InvalidExpression();
                     }
                 }
             }
@@ -121,7 +114,7 @@ string* Solver::convert(string s) {
                 op.pop();
             }
             if (op.empty() || !isLeftBracket(op.top())){
-                throw (std::invalid_argument)"Expected '('";
+                throw ExpectedLeftBracket();
             }
             op.pop();
             s.erase(0, 1);
@@ -139,13 +132,13 @@ string* Solver::convert(string s) {
                   s.erase(0, temp.length());
                   temp.erase();
             } else {
-                  throw std::logic_error ("Invalid expression.");
+                  throw InvalidExpression();
             }
         }
     }
     while (!op.empty()){//конец выражение - выталкиваем все из стека
         if (isLeftBracket(op.top())){
-            throw (std::invalid_argument)"Expected ')'";
+            throw ExpectedRightBracket();
         }
         rpn[j] = op.top();
         j++;
@@ -163,6 +156,9 @@ string* Solver::convert(string s) {
 double* Solver::extract(std::stack<double> &result, Operation *operation) {
     auto out = new double [operation->argc()];
     for (int i = operation->argc() - 1; i >= 0; i--){
+        if(result.empty()){
+            throw LackOfOperands();
+        }
         out[i] = result.top();
         result.pop();
     }
@@ -171,21 +167,17 @@ double* Solver::extract(std::stack<double> &result, Operation *operation) {
 
 
 double Solver::solution(const string &s) {
-    try {
-        string *rpn = convert(s);
-        stack <double> result;
-        int n = cast<string, int>(rpn[0]);
-        for (int i = 1; i <= n; i++){
-            if (isOperation(rpn[i])){
-                Operation *op = handler.getOp(rpn[i]);
-                result.push(op->operationResult(extract(result, op)));
-            } else {
-                result.push(cast<string, double>(rpn[i]));
-            }
+    string *rpn = convert(s);
+    stack <double> result;
+    int n = cast<string, int>(rpn[0]);
+    for (int i = 1; i <= n; i++){
+        if (isOperation(rpn[i])){
+            Operation *op = handler.getOp(rpn[i]);
+            result.push(op->operationResult(extract(result, op)));
+        } else {
+            result.push(cast<string, double>(rpn[i]));
         }
-        delete [] rpn;
-        return result.top();
-    } catch (std::invalid_argument &err){
-        cout << err.what();
     }
+    delete [] rpn;
+    return result.top();
 }
