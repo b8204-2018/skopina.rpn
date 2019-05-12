@@ -17,7 +17,7 @@ include_directories(googletest/googletest/include)
 
 set(SOURCE_FILES src/rpn.cpp)
 
-add_executable(main main.cpp ${SOURCE_FILES} src/exeptions.h)
+add_executable(main main.cpp ${SOURCE_FILES})
 add_executable(tests tests.cpp ${SOURCE_FILES})
 
 target_link_libraries(tests gtest)

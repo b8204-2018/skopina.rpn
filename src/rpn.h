@@ -2,33 +2,18 @@
 #define RPN_RPN_H
 
 
-#include <vector>
+#include <map>
 #include <stack>
 #include <string>
 #include "operation.h"
 #include "exeptions.h"
 
-class HandlerCreator;
 
 class OperationsHandler {
-    std::vector<Operation*> op;
-public:
-    Operation *getOp(std::string sign);
-    friend HandlerCreator;
-};
-
-
-class HandlerCreator {
-protected:
-    OperationsHandler handler;
+    std::map<std::string, Operation*> op;
 public:
     void add(Operation *operation);
-    virtual OperationsHandler create() = 0;
-};
-
-class DefaultHandler: public HandlerCreator {
-public:
-    OperationsHandler create();
+    Operation *getOp(std::string sign);
 };
 
 

@@ -37,5 +37,16 @@ public:
 };
 
 
+class DivisionByZero: public Exception{
+public:
+    DivisionByZero():Exception("Division by zero."){};
+};
+
+
+class EmptyString: public Exception{
+public:
+    EmptyString():Exception("Empty string."){};
+};
+
 
 #endif //RPN_EXEPTIONS_H

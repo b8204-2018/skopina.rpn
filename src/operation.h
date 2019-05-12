@@ -1,6 +1,7 @@
 #ifndef CALC_CALC_H
 #define CALC_CALC_H
 
+#include "exeptions.h"
 
 #define ADDITION "+"
 #define SUBTRACTION "-"
@@ -77,7 +78,7 @@ public:
     }
     double operationResult(double *val) override{
        if (val[1] == 0){
-           throw std::invalid_argument ("Division by zero.");
+           throw DivisionByZero();
        }
        return (val[0] / val[1]);
     }

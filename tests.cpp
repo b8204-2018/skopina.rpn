@@ -4,6 +4,12 @@
 using namespace std;
 
 
+TEST(InvalidExpression, EmptyString) {
+    string ex("");
+    Solver s;
+    EXPECT_THROW(s.solution(ex), EmptyString);
+}
+
 TEST(InvalidExpression, ExtraRightBracket) {
     string ex("(6 + 10 - 4) / (1 + 1 * 2)) + 1");
     Solver s;
@@ -60,6 +66,8 @@ TEST(Calculation, Brackets_EqualPriorities) {
     EXPECT_EQ(s.solution(ex), 12);
     ex = "6 + (10.48 - 4)";
     EXPECT_EQ(s.solution(ex), 12.48);
+    ex = "6 - (10 - 4)";
+    EXPECT_EQ(s.solution(ex), 0);
     ex = "(6 + 10) - 4.5";
     EXPECT_EQ(s.solution(ex), 11.5);
 }
@@ -77,10 +85,16 @@ TEST(Calculation, Brackets_NotEqualPriorities) {
 }
 
 
+TEST(Calculation, DivisionByZero) {
+    string ex("((22 + 17) / 13 + 4) / (42 - 30 - 12)");
+    Solver s;
+    EXPECT_THROW(s.solution(ex), DivisionByZero);
+}
+
 TEST (AddNewOperation, NewOperation){
     class Negation: public Operation{
     public:
-        int argc(){
+        int argc() override {
             return 1;
         }
         const std::string getSign() override{
@@ -94,20 +108,14 @@ TEST (AddNewOperation, NewOperation){
         }
     };
 
-    class HandlerWithNegation: public HandlerCreator{
-    public:
-        OperationsHandler create(){
-            DefaultHandler def;
-            handler = def.create();
-            add(new Negation);
-            return handler;
-        }
-    };
-
-    HandlerWithNegation creator;
-    OperationsHandler handler = creator.create();
+    OperationsHandler handler;
+    handler.add(new Addition);
+    handler.add(new Subtraction);
+    handler.add(new Multiplication);
+    handler.add(new Division);
+    handler.add(new Negation);
+    
     Solver solver(handler);
-
     string ex("(6 + 10 - 4) / ( ~ (1 + 1 * 2) + 1)");
     EXPECT_EQ(solver.solution(ex), -3);
 }

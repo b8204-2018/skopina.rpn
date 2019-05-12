@@ -6,31 +6,19 @@
 using namespace std;
 
 
-void HandlerCreator::add(Operation *operation) {
-    int i;
-    for (i = 0; i < handler.op.size(); i++);
-    if (i == handler.op.size()){
-        handler.op.push_back(operation);
+void OperationsHandler::add(Operation *operation) {
+    map<std::string, Operation*>::iterator end = op.end();
+    if (end == op.begin() || op.find(operation->getSign()) == end){
+        op.insert(make_pair(operation->getSign(), operation));
     }
-}
-
-
-OperationsHandler DefaultHandler::create() {
-    add(new Addition);
-    add(new Subtraction);
-    add(new Multiplication);
-    add(new Division);
-    return handler;
 }
 
 
 Operation* OperationsHandler::getOp(std::string sign) {
-    int i;
-    for(i = 0; i < op.size() && op[i]->getSign() != sign; i++);
-    if (i == op.size()){
-        return nullptr;
+    if (op.find(sign) != op.end()){
+        return op[sign];
     }
-    return op[i];
+    return nullptr;
 }
 
 
@@ -45,8 +33,10 @@ S Solver::cast(T &a) {
 
 
 Solver::Solver() {
-    DefaultHandler def;
-    handler = def.create();
+    handler.add(new Addition);
+    handler.add(new Subtraction);
+    handler.add(new Multiplication);
+    handler.add(new Division);
 }
 
 Solver::Solver(OperationsHandler &h): handler(h) {}
@@ -78,6 +68,9 @@ bool Solver::priority(Operation *op1, Operation *op2) {
 
 
 string* Solver::convert(string s) {
+    if (s == ""){
+        throw EmptyString();
+    }
     stack <string> op;
     string rpn [s.length()];
     string temp;
